@@ -507,7 +507,7 @@
             <p>Create a new session or join an existing one</p>
             <div class="session-buttons">
                 <button class="btn-start" onclick="createSession()">Create New Session</button>
-                <input type="text" class="session-input" id="join-code-input" placeholder="e.g., happy-tree-blue">
+                <input type="text" class="session-input" id="join-code-input" placeholder="e.g., happy-tree">
                 <button class="btn-add" onclick="joinSession()">Join Session</button>
             </div>
         </div>
@@ -644,8 +644,7 @@
         function generateSessionCode() {
             const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
             const noun = nouns[Math.floor(Math.random() * nouns.length)];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            return `${adjective}-${noun}-${color}`;
+            return `${adjective}-${noun}`;
         }
 
         // Create session
