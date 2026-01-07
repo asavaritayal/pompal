@@ -327,7 +327,7 @@
 
         .todo-list {
             list-style: none;
-            max-height: 300px;
+            max-height: 600px;
             overflow-y: auto;
         }
 
@@ -340,10 +340,32 @@
             border-radius: 8px;
             margin-bottom: 8px;
             transition: all 0.3s;
+            cursor: move;
         }
 
         .todo-item:hover {
             background: #edf2f7;
+        }
+
+        .todo-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .todo-item.drag-over {
+            border-top: 3px solid #667eea;
+            padding-top: 7px;
+        }
+
+        .drag-handle {
+            color: #a0aec0;
+            cursor: grab;
+            font-size: 1.2em;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
         }
 
         .todo-checkbox {
@@ -877,13 +899,99 @@
                 return;
             }
 
-            listElement.innerHTML = list.map(todo => `
-                <li class="todo-item">
+            listElement.innerHTML = list.map((todo, index) => `
+                <li class="todo-item" draggable="true" data-id="${todo.id}" data-person="${person}" data-index="${index}">
+                    <span class="drag-handle">☰</span>
                     <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodo('${person}', ${todo.id})">
                     <span class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</span>
                     <button class="btn-delete" onclick="deleteTodo('${person}', ${todo.id})">Delete</button>
                 </li>
             `).join('');
+
+            // Add drag event listeners
+            setupDragAndDrop(listElement, person);
+        }
+
+        // Setup drag and drop functionality
+        function setupDragAndDrop(listElement, person) {
+            const items = listElement.querySelectorAll('.todo-item');
+            let draggedItem = null;
+            let draggedIndex = null;
+
+            items.forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    draggedItem = this;
+                    draggedIndex = parseInt(this.getAttribute('data-index'));
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                item.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                    items.forEach(i => i.classList.remove('drag-over'));
+                    draggedItem = null;
+                    draggedIndex = null;
+                });
+
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+
+                    if (this === draggedItem) return;
+
+                    items.forEach(i => i.classList.remove('drag-over'));
+                    this.classList.add('drag-over');
+                });
+
+                item.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (this === draggedItem) return;
+
+                    const dropIndex = parseInt(this.getAttribute('data-index'));
+
+                    // Reorder the list
+                    reorderTodos(person, draggedIndex, dropIndex);
+
+                    items.forEach(i => i.classList.remove('drag-over'));
+                });
+            });
+        }
+
+        // Reorder todos
+        function reorderTodos(person, fromIndex, toIndex) {
+            let list, key;
+
+            if (person === 'person1') {
+                list = person1Todos;
+                key = 'person1Todos';
+            } else if (person === 'person2') {
+                list = person2Todos;
+                key = 'person2Todos';
+            } else {
+                list = parkingLotItems;
+                key = 'parkingLotItems';
+            }
+
+            // Remove item from old position
+            const [movedItem] = list.splice(fromIndex, 1);
+
+            // Insert at new position
+            list.splice(toIndex, 0, movedItem);
+
+            // Update the appropriate list
+            if (person === 'person1') {
+                person1Todos = list;
+            } else if (person === 'person2') {
+                person2Todos = list;
+            } else {
+                parkingLotItems = list;
+            }
+
+            // Re-render and sync
+            renderTodos(person);
+            syncToFirebase({ [key]: list });
         }
 
         // Render all todos
