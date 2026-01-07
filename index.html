@@ -81,8 +81,7 @@
             font-size: 1em;
             margin-bottom: 15px;
             text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             font-weight: bold;
         }
 
@@ -118,7 +117,8 @@
         .session-banner .session-code-display {
             font-weight: bold;
             color: #667eea;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            font-size: 1.1em;
         }
 
         .btn-leave {
@@ -431,7 +431,7 @@
             <p>Create a new session or join an existing one</p>
             <div class="session-buttons">
                 <button class="btn-start" onclick="createSession()">Create New Session</button>
-                <input type="text" class="session-input" id="join-code-input" placeholder="Enter session code" maxlength="6">
+                <input type="text" class="session-input" id="join-code-input" placeholder="e.g., happy-tree-blue">
                 <button class="btn-add" onclick="joinSession()">Join Session</button>
             </div>
         </div>
@@ -446,7 +446,7 @@
         <div class="session-banner">
             <div>
                 <span style="color: #666;">Session Code: </span>
-                <span class="session-code-display" id="session-code-display">------</span>
+                <span class="session-code-display" id="session-code-display">---</span>
             </div>
             <button class="btn-leave" onclick="leaveSession()">Leave Session</button>
         </div>
@@ -559,9 +559,17 @@
         let person2Todos = [];
         let parkingLotItems = [];
 
-        // Generate random session code
+        // Word lists for generating friendly session codes
+        const adjectives = ['happy', 'sunny', 'blue', 'green', 'bright', 'cool', 'warm', 'sweet', 'fresh', 'calm', 'clear', 'fair', 'bold', 'brave', 'kind', 'swift', 'wise', 'glad', 'merry', 'jolly'];
+        const nouns = ['tree', 'cat', 'dog', 'bird', 'fish', 'star', 'moon', 'cloud', 'wave', 'bear', 'deer', 'fox', 'lion', 'tiger', 'eagle', 'rose', 'sage', 'wind', 'rain', 'snow'];
+        const colors = ['red', 'blue', 'gold', 'jade', 'pink', 'teal', 'mint', 'plum', 'sage', 'ruby', 'navy', 'lime', 'sand', 'gray', 'ivory', 'coral', 'amber', 'pearl', 'olive', 'azure'];
+
+        // Generate random session code with friendly words
         function generateSessionCode() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
+            const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            return `${adjective}-${noun}-${color}`;
         }
 
         // Create session
@@ -591,7 +599,7 @@
 
         // Join session
         window.joinSession = async function() {
-            const sessionCode = joinCodeInput.value.trim().toUpperCase();
+            const sessionCode = joinCodeInput.value.trim().toLowerCase();
             if (!sessionCode) {
                 alert('Please enter a session code');
                 return;
