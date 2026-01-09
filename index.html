@@ -308,6 +308,11 @@
             content: '👤';
         }
 
+        .person-goals.profile-connected.person1 h2::before,
+        .person-goals.profile-connected.person2 h2::before {
+            display: none;
+        }
+
         .name-input {
             padding: 10px 12px;
             border: 1px solid #404040;
@@ -883,9 +888,11 @@
             const person1Photo = document.getElementById('person1-profile-photo');
             const person1Header = document.getElementById('person1-header');
             const person1ConnectBtn = document.getElementById('person1-connect-btn');
+            const person1Container = document.querySelector('.person-goals.person1');
             const person2Photo = document.getElementById('person2-profile-photo');
             const person2Header = document.getElementById('person2-header');
             const person2ConnectBtn = document.getElementById('person2-connect-btn');
+            const person2Container = document.querySelector('.person-goals.person2');
 
             // Update Person 1 (Pom Keeper)
             if (person1Profile) {
@@ -893,10 +900,12 @@
                 person1Photo.style.display = 'block';
                 person1Header.textContent = `${person1Profile.name}'s Goals`;
                 person1ConnectBtn.style.display = 'none';
+                person1Container.classList.add('profile-connected');
             } else {
                 person1Photo.style.display = 'none';
                 person1Header.textContent = "Pom Keeper's Goals";
                 person1ConnectBtn.style.display = 'block';
+                person1Container.classList.remove('profile-connected');
             }
 
             // Update Person 2 (Pom Runner)
@@ -905,10 +914,12 @@
                 person2Photo.style.display = 'block';
                 person2Header.textContent = `${person2Profile.name}'s Goals`;
                 person2ConnectBtn.style.display = 'none';
+                person2Container.classList.add('profile-connected');
             } else {
                 person2Photo.style.display = 'none';
                 person2Header.textContent = "Pom Runner's Goals";
                 person2ConnectBtn.style.display = 'block';
+                person2Container.classList.remove('profile-connected');
             }
         }
 
