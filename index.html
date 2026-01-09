@@ -498,31 +498,10 @@
     </style>
 </head>
 <body>
-    <div class="session-modal" id="auth-modal">
+    <div class="session-modal" id="session-modal">
         <div class="session-content">
             <div style="text-align: center; margin-bottom: 25px;">
                 <img src="pompal-logo.png" alt="PomPal Logo" style="max-width: 200px; height: auto; border-radius: 15px;">
-            </div>
-            <h2>Welcome to PomPal</h2>
-            <p>Sign in with Google to get started and sync your goals</p>
-            <div class="session-buttons">
-                <button class="btn-start" onclick="signInWithGoogle()">Sign in with Google</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="session-modal hidden" id="session-modal">
-        <div class="session-content">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <img src="pompal-logo.png" alt="PomPal Logo" style="max-width: 200px; height: auto; border-radius: 15px;">
-            </div>
-            <div id="user-info-banner" style="background: #3A3A3A; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; border: 1px solid #404040;">
-                <img id="user-photo" src="" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%;">
-                <div style="flex: 1; text-align: left;">
-                    <div id="user-name" style="color: #F5F5F5; font-weight: 500; font-size: 0.95em;"></div>
-                    <div id="user-email" style="color: #A0A0A0; font-size: 0.85em;"></div>
-                </div>
-                <button class="btn-reset" onclick="signOutUser()" style="padding: 8px 16px; font-size: 0.85em;">Sign Out</button>
             </div>
             <h2>Welcome to PomPal</h2>
             <p>Create a new session or join an existing one</p>
@@ -530,23 +509,6 @@
                 <button class="btn-start" onclick="createSession()">Create New Session</button>
                 <input type="text" class="session-input" id="join-code-input" placeholder="e.g., happy-tree">
                 <button class="btn-add" onclick="joinSession()">Join Session</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="session-modal hidden" id="profile-connect-modal">
-        <div class="session-content">
-            <h2>Connect Your Profile</h2>
-            <p>Which role would you like to take in this session?</p>
-            <div id="role-options" style="margin: 20px 0;">
-                <div id="person1-option" class="role-option" onclick="connectProfile('person1')" style="background: #3A3A3A; padding: 20px; border-radius: 8px; margin-bottom: 12px; cursor: pointer; border: 2px solid #CA7456; transition: all 0.2s;">
-                    <div style="font-weight: 600; color: #CA7456; font-size: 1.1em; margin-bottom: 8px;">Pom Keeper</div>
-                    <div style="color: #A0A0A0; font-size: 0.9em;" id="person1-status">Available</div>
-                </div>
-                <div id="person2-option" class="role-option" onclick="connectProfile('person2')" style="background: #3A3A3A; padding: 20px; border-radius: 8px; cursor: pointer; border: 2px solid #D97706; transition: all 0.2s;">
-                    <div style="font-weight: 600; color: #D97706; font-size: 1.1em; margin-bottom: 8px;">Pom Runner</div>
-                    <div style="color: #A0A0A0; font-size: 0.9em;" id="person2-status">Available</div>
-                </div>
             </div>
         </div>
     </div>
@@ -590,8 +552,8 @@
                     <img id="person1-profile-photo" src="" alt="" style="width: 36px; height: 36px; border-radius: 50%; display: none;">
                     <div style="flex: 1;">
                         <h2 style="margin: 0;" id="person1-header">Pom Keeper's Goals</h2>
-                        <div id="person1-profile-name" style="color: #A0A0A0; font-size: 0.85em; margin-top: 4px; display: none;"></div>
                     </div>
+                    <button class="btn-reset" id="person1-connect-btn" onclick="initiateProfileConnection('person1')" style="padding: 8px 16px; font-size: 0.85em;">Connect Profile</button>
                 </div>
                 <div class="todo-input-container">
                     <input type="text" class="todo-input" id="person1-input" placeholder="Add a goal...">
@@ -607,8 +569,8 @@
                     <img id="person2-profile-photo" src="" alt="" style="width: 36px; height: 36px; border-radius: 50%; display: none;">
                     <div style="flex: 1;">
                         <h2 style="margin: 0;" id="person2-header">Pom Runner's Goals</h2>
-                        <div id="person2-profile-name" style="color: #A0A0A0; font-size: 0.85em; margin-top: 4px; display: none;"></div>
                     </div>
+                    <button class="btn-reset" id="person2-connect-btn" onclick="initiateProfileConnection('person2')" style="padding: 8px 16px; font-size: 0.85em;">Connect Profile</button>
                 </div>
                 <div class="todo-input-container">
                     <input type="text" class="todo-input" id="person2-input" placeholder="Add a goal...">
@@ -658,7 +620,6 @@
         let currentSessionId = null;
         let isUpdatingFromFirebase = false;
         let currentUser = null;
-        let currentUserRole = null; // 'person1' or 'person2'
 
         // Timer state
         let defaultDuration = 25 * 60;
@@ -667,18 +628,10 @@
         let isRunning = false;
 
         // DOM elements
-        const authModal = document.getElementById('auth-modal');
         const sessionModal = document.getElementById('session-modal');
-        const profileConnectModal = document.getElementById('profile-connect-modal');
         const mainContainer = document.getElementById('main-container');
         const sessionCodeDisplay = document.getElementById('session-code-display');
         const joinCodeInput = document.getElementById('join-code-input');
-        const userInfoBanner = document.getElementById('user-info-banner');
-        const userPhoto = document.getElementById('user-photo');
-        const userName = document.getElementById('user-name');
-        const userEmail = document.getElementById('user-email');
-        const person1StatusEl = document.getElementById('person1-status');
-        const person2StatusEl = document.getElementById('person2-status');
         const timeDisplay = document.getElementById('time-display');
         const startBtn = document.getElementById('start-btn');
         const pauseBtn = document.getElementById('pause-btn');
@@ -710,30 +663,22 @@
             return `${adjective}-${noun}`;
         }
 
-        // Authentication functions
-        window.signInWithGoogle = async function() {
+        // Profile connection state
+        let pendingRoleConnection = null;
+
+        // Initiate profile connection for a specific role
+        window.initiateProfileConnection = async function(role) {
+            pendingRoleConnection = role;
+
             try {
                 const result = await signInWithPopup(auth, googleProvider);
                 currentUser = result.user;
                 await saveUserProfile(currentUser);
-                authModal.classList.add('hidden');
-                sessionModal.classList.remove('hidden');
-                updateUserInfoDisplay();
+                await connectProfileToRole(role, currentUser);
             } catch (error) {
                 console.error('Error signing in with Google:', error);
                 alert('Failed to sign in with Google. Please try again.');
-            }
-        };
-
-        window.signOutUser = async function() {
-            try {
-                await signOut(auth);
-                currentUser = null;
-                leaveSession();
-                sessionModal.classList.add('hidden');
-                authModal.classList.remove('hidden');
-            } catch (error) {
-                console.error('Error signing out:', error);
+                pendingRoleConnection = null;
             }
         };
 
@@ -748,139 +693,59 @@
             });
         }
 
-        // Update user info display
-        function updateUserInfoDisplay() {
-            if (currentUser) {
-                userPhoto.src = currentUser.photoURL || '';
-                userName.textContent = currentUser.displayName || 'User';
-                userEmail.textContent = currentUser.email || '';
+        // Connect profile to a specific role
+        async function connectProfileToRole(role, user) {
+            const sessionRef = ref(database, `sessions/${currentSessionId}`);
+            const snapshot = await get(sessionRef);
+
+            if (!snapshot.exists()) {
+                alert('Session not found.');
+                return;
             }
+
+            const data = snapshot.val();
+            const profileKey = `${role}Profile`;
+
+            // Check if role is already taken by someone else
+            if (data[profileKey] && data[profileKey].userId !== user.uid) {
+                alert('This role is already taken by another user.');
+                return;
+            }
+
+            // Get user's goals from their profile
+            const userGoals = await getUserGoals(user.uid);
+
+            // Connect profile to session
+            await update(sessionRef, {
+                [profileKey]: {
+                    userId: user.uid,
+                    name: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL
+                },
+                [`${role}Todos`]: userGoals
+            });
+
+            pendingRoleConnection = null;
         }
 
-        // Listen for authentication state changes
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                await saveUserProfile(user);
-                authModal.classList.add('hidden');
-                if (!currentSessionId) {
-                    sessionModal.classList.remove('hidden');
-                }
-                updateUserInfoDisplay();
-            } else {
-                currentUser = null;
-                authModal.classList.remove('hidden');
-                sessionModal.classList.add('hidden');
-                mainContainer.style.display = 'none';
-            }
-        });
-
         // Get or create user's goals from their profile
-        async function getUserGoals() {
-            if (!currentUser) return [];
-            const goalsRef = ref(database, `users/${currentUser.uid}/goals`);
+        async function getUserGoals(userId) {
+            const goalsRef = ref(database, `users/${userId}/goals`);
             const snapshot = await get(goalsRef);
             return snapshot.exists() ? snapshot.val() : [];
         }
 
         // Save user's goals to their profile
-        async function saveUserGoals(goals) {
-            if (!currentUser) return;
-            const goalsRef = ref(database, `users/${currentUser.uid}/goals`);
+        async function saveUserGoals(userId, goals) {
+            const goalsRef = ref(database, `users/${userId}/goals`);
             await set(goalsRef, goals);
         }
 
-        // Show profile connection modal
-        async function showProfileConnectionModal() {
-            const sessionRef = ref(database, `sessions/${currentSessionId}`);
-            const snapshot = await get(sessionRef);
-
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-
-                // Check if user is already connected to a role
-                if (data.person1Profile && data.person1Profile.userId === currentUser.uid) {
-                    currentUserRole = 'person1';
-                    await finishProfileConnection();
-                    return;
-                } else if (data.person2Profile && data.person2Profile.userId === currentUser.uid) {
-                    currentUserRole = 'person2';
-                    await finishProfileConnection();
-                    return;
-                }
-
-                // Update status display for available roles
-                const person1Option = document.getElementById('person1-option');
-                const person2Option = document.getElementById('person2-option');
-
-                if (data.person1Profile) {
-                    person1StatusEl.textContent = `Connected: ${data.person1Profile.name}`;
-                    person1Option.style.opacity = '0.5';
-                    person1Option.style.cursor = 'not-allowed';
-                    person1Option.onclick = null;
-                } else {
-                    person1StatusEl.textContent = 'Available';
-                    person1Option.style.opacity = '1';
-                    person1Option.style.cursor = 'pointer';
-                    person1Option.onclick = () => connectProfile('person1');
-                }
-
-                if (data.person2Profile) {
-                    person2StatusEl.textContent = `Connected: ${data.person2Profile.name}`;
-                    person2Option.style.opacity = '0.5';
-                    person2Option.style.cursor = 'not-allowed';
-                    person2Option.onclick = null;
-                } else {
-                    person2StatusEl.textContent = 'Available';
-                    person2Option.style.opacity = '1';
-                    person2Option.style.cursor = 'pointer';
-                    person2Option.onclick = () => connectProfile('person2');
-                }
-
-                profileConnectModal.classList.remove('hidden');
-            }
-        }
-
-        // Connect user profile to a role
-        window.connectProfile = async function(role) {
-            const sessionRef = ref(database, `sessions/${currentSessionId}`);
-            const snapshot = await get(sessionRef);
-
-            if (!snapshot.exists()) return;
-
-            const data = snapshot.val();
+        // Get user ID for a specific role in the session
+        function getUserIdForRole(role, sessionData) {
             const profileKey = `${role}Profile`;
-
-            // Check if role is already taken
-            if (data[profileKey]) {
-                alert('This role is already taken. Please choose the other role.');
-                return;
-            }
-
-            currentUserRole = role;
-
-            // Get user's goals from their profile
-            const userGoals = await getUserGoals();
-
-            // Connect profile to session
-            await update(sessionRef, {
-                [profileKey]: {
-                    userId: currentUser.uid,
-                    name: currentUser.displayName,
-                    email: currentUser.email,
-                    photoURL: currentUser.photoURL
-                },
-                [`${role}Todos`]: userGoals
-            });
-
-            await finishProfileConnection();
-        };
-
-        // Finish profile connection and show main container
-        async function finishProfileConnection() {
-            profileConnectModal.classList.add('hidden');
-            mainContainer.style.display = 'block';
-            setupFirebaseListeners();
+            return sessionData[profileKey] ? sessionData[profileKey].userId : null;
         }
 
         // Create session
@@ -904,10 +769,10 @@
             });
 
             sessionModal.classList.add('hidden');
+            mainContainer.style.display = 'block';
             sessionCodeDisplay.textContent = sessionCode;
 
-            // Show profile connection modal
-            await showProfileConnectionModal();
+            setupFirebaseListeners();
         };
 
         // Join session
@@ -924,10 +789,10 @@
             if (snapshot.exists()) {
                 currentSessionId = sessionCode;
                 sessionModal.classList.add('hidden');
+                mainContainer.style.display = 'block';
                 sessionCodeDisplay.textContent = sessionCode;
 
-                // Show profile connection modal
-                await showProfileConnectionModal();
+                setupFirebaseListeners();
             } else {
                 alert('Session not found. Please check the code and try again.');
             }
@@ -937,7 +802,6 @@
         window.leaveSession = function() {
             if (confirm('Are you sure you want to leave this session?')) {
                 currentSessionId = null;
-                currentUserRole = null;
                 mainContainer.style.display = 'none';
                 sessionModal.classList.remove('hidden');
                 joinCodeInput.value = '';
@@ -982,28 +846,34 @@
         // Update profile displays in goals sections
         function updateProfileDisplays(person1Profile, person2Profile) {
             const person1Photo = document.getElementById('person1-profile-photo');
-            const person1ProfileName = document.getElementById('person1-profile-name');
+            const person1Header = document.getElementById('person1-header');
+            const person1ConnectBtn = document.getElementById('person1-connect-btn');
             const person2Photo = document.getElementById('person2-profile-photo');
-            const person2ProfileName = document.getElementById('person2-profile-name');
+            const person2Header = document.getElementById('person2-header');
+            const person2ConnectBtn = document.getElementById('person2-connect-btn');
 
+            // Update Person 1 (Pom Keeper)
             if (person1Profile) {
                 person1Photo.src = person1Profile.photoURL || '';
                 person1Photo.style.display = 'block';
-                person1ProfileName.textContent = person1Profile.name;
-                person1ProfileName.style.display = 'block';
+                person1Header.textContent = `${person1Profile.name}'s Goals`;
+                person1ConnectBtn.style.display = 'none';
             } else {
                 person1Photo.style.display = 'none';
-                person1ProfileName.style.display = 'none';
+                person1Header.textContent = "Pom Keeper's Goals";
+                person1ConnectBtn.style.display = 'block';
             }
 
+            // Update Person 2 (Pom Runner)
             if (person2Profile) {
                 person2Photo.src = person2Profile.photoURL || '';
                 person2Photo.style.display = 'block';
-                person2ProfileName.textContent = person2Profile.name;
-                person2ProfileName.style.display = 'block';
+                person2Header.textContent = `${person2Profile.name}'s Goals`;
+                person2ConnectBtn.style.display = 'none';
             } else {
                 person2Photo.style.display = 'none';
-                person2ProfileName.style.display = 'none';
+                person2Header.textContent = "Pom Runner's Goals";
+                person2ConnectBtn.style.display = 'block';
             }
         }
 
@@ -1164,9 +1034,16 @@
                 renderTodos(person);
                 syncToFirebase({ [key]: list });
 
-                // Also save to user's profile if this is their role
-                if (person === currentUserRole) {
-                    await saveUserGoals(list);
+                // Also save to user's profile if a profile is connected to this role
+                if (person !== 'parking') {
+                    const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                    const snapshot = await get(sessionRef);
+                    if (snapshot.exists()) {
+                        const userId = getUserIdForRole(person, snapshot.val());
+                        if (userId) {
+                            await saveUserGoals(userId, list);
+                        }
+                    }
                 }
             }
         };
@@ -1191,9 +1068,16 @@
                 renderTodos(person);
                 syncToFirebase({ [key]: list });
 
-                // Also save to user's profile if this is their role
-                if (person === currentUserRole) {
-                    await saveUserGoals(list);
+                // Also save to user's profile if a profile is connected to this role
+                if (person !== 'parking') {
+                    const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                    const snapshot = await get(sessionRef);
+                    if (snapshot.exists()) {
+                        const userId = getUserIdForRole(person, snapshot.val());
+                        if (userId) {
+                            await saveUserGoals(userId, list);
+                        }
+                    }
                 }
             }
         };
@@ -1219,9 +1103,16 @@
             }
             renderTodos(person);
 
-            // Also save to user's profile if this is their role
-            if (person === currentUserRole) {
-                await saveUserGoals(updatedList);
+            // Also save to user's profile if a profile is connected to this role
+            if (person !== 'parking') {
+                const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                const snapshot = await get(sessionRef);
+                if (snapshot.exists()) {
+                    const userId = getUserIdForRole(person, snapshot.val());
+                    if (userId) {
+                        await saveUserGoals(userId, updatedList);
+                    }
+                }
             }
         };
 
@@ -1340,9 +1231,16 @@
             renderTodos(person);
             syncToFirebase({ [key]: list });
 
-            // Also save to user's profile if this is their role
-            if (person === currentUserRole) {
-                await saveUserGoals(list);
+            // Also save to user's profile if a profile is connected to this role
+            if (person !== 'parking') {
+                const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                const snapshot = await get(sessionRef);
+                if (snapshot.exists()) {
+                    const userId = getUserIdForRole(person, snapshot.val());
+                    if (userId) {
+                        await saveUserGoals(userId, list);
+                    }
+                }
             }
         }
 
