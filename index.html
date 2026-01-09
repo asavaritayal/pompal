@@ -577,7 +577,13 @@
 
         <div class="goals-section">
             <div class="person-goals person1">
-                <h2>Pom Keeper's Goals</h2>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                    <img id="person1-profile-photo" src="" alt="" style="width: 36px; height: 36px; border-radius: 50%; display: none;">
+                    <div style="flex: 1;">
+                        <h2 style="margin: 0;" id="person1-header">Pom Keeper's Goals</h2>
+                    </div>
+                    <button class="btn-reset" id="person1-connect-btn" onclick="initiateProfileConnection('person1')" style="padding: 8px 16px; font-size: 0.85em;">Connect Profile</button>
+                </div>
                 <div class="todo-input-container">
                     <input type="text" class="todo-input" id="person1-input" placeholder="Add a goal...">
                     <button class="btn-add" onclick="addTodo('person1')">Add</button>
@@ -588,7 +594,13 @@
             </div>
 
             <div class="person-goals person2">
-                <h2>Pom Runner's Goals</h2>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                    <img id="person2-profile-photo" src="" alt="" style="width: 36px; height: 36px; border-radius: 50%; display: none;">
+                    <div style="flex: 1;">
+                        <h2 style="margin: 0;" id="person2-header">Pom Runner's Goals</h2>
+                    </div>
+                    <button class="btn-reset" id="person2-connect-btn" onclick="initiateProfileConnection('person2')" style="padding: 8px 16px; font-size: 0.85em;">Connect Profile</button>
+                </div>
                 <div class="todo-input-container">
                     <input type="text" class="todo-input" id="person2-input" placeholder="Add a goal...">
                     <button class="btn-add" onclick="addTodo('person2')">Add</button>
@@ -614,6 +626,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -629,10 +642,13 @@
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
 
         // Session state
         let currentSessionId = null;
         let isUpdatingFromFirebase = false;
+        let currentUser = null;
 
         // Timer state
         let defaultDuration = 25 * 60;
@@ -676,6 +692,91 @@
             return `${adjective}-${noun}`;
         }
 
+        // Profile connection state
+        let pendingRoleConnection = null;
+
+        // Initiate profile connection for a specific role
+        window.initiateProfileConnection = async function(role) {
+            pendingRoleConnection = role;
+
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                currentUser = result.user;
+                await saveUserProfile(currentUser);
+                await connectProfileToRole(role, currentUser);
+            } catch (error) {
+                console.error('Error signing in with Google:', error);
+                alert('Failed to sign in with Google. Please try again.');
+                pendingRoleConnection = null;
+            }
+        };
+
+        // Save user profile to Firebase
+        async function saveUserProfile(user) {
+            const userRef = ref(database, `users/${user.uid}/profile`);
+            await set(userRef, {
+                name: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                lastLogin: Date.now()
+            });
+        }
+
+        // Connect profile to a specific role
+        async function connectProfileToRole(role, user) {
+            const sessionRef = ref(database, `sessions/${currentSessionId}`);
+            const snapshot = await get(sessionRef);
+
+            if (!snapshot.exists()) {
+                alert('Session not found.');
+                return;
+            }
+
+            const data = snapshot.val();
+            const profileKey = `${role}Profile`;
+
+            // Check if role is already taken by someone else
+            if (data[profileKey] && data[profileKey].userId !== user.uid) {
+                alert('This role is already taken by another user.');
+                return;
+            }
+
+            // Get user's goals from their profile
+            const userGoals = await getUserGoals(user.uid);
+
+            // Connect profile to session
+            await update(sessionRef, {
+                [profileKey]: {
+                    userId: user.uid,
+                    name: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL
+                },
+                [`${role}Todos`]: userGoals
+            });
+
+            pendingRoleConnection = null;
+        }
+
+        // Get or create user's goals from their profile
+        async function getUserGoals(userId) {
+            const goalsRef = ref(database, `users/${userId}/goals`);
+            const snapshot = await get(goalsRef);
+            return snapshot.exists() ? snapshot.val() : [];
+        }
+
+        // Save user's goals to their profile
+        async function saveUserGoals(userId, goals) {
+            const goalsRef = ref(database, `users/${userId}/goals`);
+            await set(goalsRef, goals);
+        }
+
+        // Get user ID for a specific role in the session
+        function getUserIdForRole(role, sessionData) {
+            const profileKey = `${role}Profile`;
+            return sessionData[profileKey] ? sessionData[profileKey].userId : null;
+        }
+
         // Create session
         window.createSession = async function() {
             const sessionCode = generateSessionCode();
@@ -686,6 +787,8 @@
                 defaultDuration: 25 * 60,
                 timeLeft: 25 * 60,
                 isRunning: false,
+                person1Profile: null,
+                person2Profile: null,
                 person1Todos: [],
                 person2Todos: [],
                 parkingLotItems: [],
@@ -760,12 +863,47 @@
                     durationInput.value = Math.floor(defaultDuration / 60);
 
                     updateDisplay();
+                    updateProfileDisplays(data.person1Profile, data.person2Profile);
                     renderAllTodos();
                     updatePomodoroCountDisplay(data.pomodoroCount || 0);
 
                     isUpdatingFromFirebase = false;
                 }
             });
+        }
+
+        // Update profile displays in goals sections
+        function updateProfileDisplays(person1Profile, person2Profile) {
+            const person1Photo = document.getElementById('person1-profile-photo');
+            const person1Header = document.getElementById('person1-header');
+            const person1ConnectBtn = document.getElementById('person1-connect-btn');
+            const person2Photo = document.getElementById('person2-profile-photo');
+            const person2Header = document.getElementById('person2-header');
+            const person2ConnectBtn = document.getElementById('person2-connect-btn');
+
+            // Update Person 1 (Pom Keeper)
+            if (person1Profile) {
+                person1Photo.src = person1Profile.photoURL || '';
+                person1Photo.style.display = 'block';
+                person1Header.textContent = `${person1Profile.name}'s Goals`;
+                person1ConnectBtn.style.display = 'none';
+            } else {
+                person1Photo.style.display = 'none';
+                person1Header.textContent = "Pom Keeper's Goals";
+                person1ConnectBtn.style.display = 'block';
+            }
+
+            // Update Person 2 (Pom Runner)
+            if (person2Profile) {
+                person2Photo.src = person2Profile.photoURL || '';
+                person2Photo.style.display = 'block';
+                person2Header.textContent = `${person2Profile.name}'s Goals`;
+                person2ConnectBtn.style.display = 'none';
+            } else {
+                person2Photo.style.display = 'none';
+                person2Header.textContent = "Pom Runner's Goals";
+                person2ConnectBtn.style.display = 'block';
+            }
         }
 
         // Sync to Firebase
@@ -897,7 +1035,7 @@
         }
 
         // Add todo
-        window.addTodo = function(person) {
+        window.addTodo = async function(person) {
             let input, list, key;
 
             if (person === 'person1') {
@@ -924,11 +1062,23 @@
                 input.value = '';
                 renderTodos(person);
                 syncToFirebase({ [key]: list });
+
+                // Also save to user's profile if a profile is connected to this role
+                if (person !== 'parking') {
+                    const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                    const snapshot = await get(sessionRef);
+                    if (snapshot.exists()) {
+                        const userId = getUserIdForRole(person, snapshot.val());
+                        if (userId) {
+                            await saveUserGoals(userId, list);
+                        }
+                    }
+                }
             }
         };
 
         // Toggle todo completion
-        window.toggleTodo = function(person, id) {
+        window.toggleTodo = async function(person, id) {
             let list, key;
             if (person === 'person1') {
                 list = person1Todos;
@@ -946,26 +1096,53 @@
                 todo.completed = !todo.completed;
                 renderTodos(person);
                 syncToFirebase({ [key]: list });
+
+                // Also save to user's profile if a profile is connected to this role
+                if (person !== 'parking') {
+                    const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                    const snapshot = await get(sessionRef);
+                    if (snapshot.exists()) {
+                        const userId = getUserIdForRole(person, snapshot.val());
+                        if (userId) {
+                            await saveUserGoals(userId, list);
+                        }
+                    }
+                }
             }
         };
 
         // Delete todo
-        window.deleteTodo = function(person, id) {
-            let key;
+        window.deleteTodo = async function(person, id) {
+            let key, updatedList;
             if (person === 'person1') {
                 person1Todos = person1Todos.filter(t => t.id !== id);
                 key = 'person1Todos';
+                updatedList = person1Todos;
                 syncToFirebase({ [key]: person1Todos });
             } else if (person === 'person2') {
                 person2Todos = person2Todos.filter(t => t.id !== id);
                 key = 'person2Todos';
+                updatedList = person2Todos;
                 syncToFirebase({ [key]: person2Todos });
             } else {
                 parkingLotItems = parkingLotItems.filter(t => t.id !== id);
                 key = 'parkingLotItems';
+                updatedList = parkingLotItems;
                 syncToFirebase({ [key]: parkingLotItems });
             }
             renderTodos(person);
+
+            // Also save to user's profile if a profile is connected to this role
+            if (person !== 'parking') {
+                const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                const snapshot = await get(sessionRef);
+                if (snapshot.exists()) {
+                    const userId = getUserIdForRole(person, snapshot.val());
+                    if (userId) {
+                        await saveUserGoals(userId, updatedList);
+                    }
+                }
+            }
         };
 
         // Render todos
@@ -1050,7 +1227,7 @@
         }
 
         // Reorder todos
-        function reorderTodos(person, fromIndex, toIndex) {
+        async function reorderTodos(person, fromIndex, toIndex) {
             let list, key;
 
             if (person === 'person1') {
@@ -1082,6 +1259,18 @@
             // Re-render and sync
             renderTodos(person);
             syncToFirebase({ [key]: list });
+
+            // Also save to user's profile if a profile is connected to this role
+            if (person !== 'parking') {
+                const sessionRef = ref(database, `sessions/${currentSessionId}`);
+                const snapshot = await get(sessionRef);
+                if (snapshot.exists()) {
+                    const userId = getUserIdForRole(person, snapshot.val());
+                    if (userId) {
+                        await saveUserGoals(userId, list);
+                    }
+                }
+            }
         }
 
         // Render all todos
