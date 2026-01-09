@@ -722,6 +722,12 @@
             });
         }
 
+        // Extract first name from full name
+        function getFirstName(fullName) {
+            if (!fullName) return 'User';
+            return fullName.split(' ')[0];
+        }
+
         // Connect profile to a specific role
         async function connectProfileToRole(role, user) {
             const sessionRef = ref(database, `sessions/${currentSessionId}`);
@@ -748,7 +754,7 @@
             await update(sessionRef, {
                 [profileKey]: {
                     userId: user.uid,
-                    name: user.displayName,
+                    name: getFirstName(user.displayName),
                     email: user.email,
                     photoURL: user.photoURL
                 },
